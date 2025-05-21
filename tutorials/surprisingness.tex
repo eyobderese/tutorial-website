@@ -1,0 +1,517 @@
+\section{Understanding Surprisingness}
+
+Surprisingness (or "interestingness") in the Hyperon Pattern Miner is implemented in \texttt{utils/MinerUtils.metta} by the I-Surprisingness measure. It compares each pattern's empirical probability against an expected probability under a simple independence-based null model, then normalizes the largest deviation.
+
+\subsection{Universe Size and Empirical Probability}
+
+First, the miner computes the total number of ground atoms:
+
+\begin{verbatim}
+;; Count every atom in the database
+(= (universe-size)
+   (let $u (collapse (match $dbspace $x 1))
+       (tuple-count $u)))
+\end{verbatim}
+
+Given a pattern's support count, its empirical probability is computed as:
+
+\begin{verbatim}
+;; P_obs = support / universe-size
+(= (prob $count)
+   (// $count (universe-size)))
+\end{verbatim}
+
+This defines
+\[
+  P_{\mathrm{obs}}
+  = \frac{\mathrm{support}}{\text{universe-size}}.
+\]
+\subsection{I-Surprisingness for 2 and 3-Clause Patterns}
+
+The core logic lives in:
+
+\begin{verbatim}
+(= (iSurprisingness $pattern)
+  (case $pattern
+    ;; 2-clause patterns
+    ((candidate (, $p1 $p2) $cnt)
+     (let* (($pp1   (prob (count $p1)))
+            ($pp2   (prob (count $p2)))
+            ($exp   (* $pp1 $pp2))
+            ($obs   (prob $cnt)))
+       (// (max (- $obs $exp)
+                (- $exp $obs))
+           $obs)))
+    ;; 3-clause patterns
+    ((candidate (, $p1 $p2 $p3) $cnt)
+     (let* (($pp1    (prob (count $p1)))
+            ($pp2    (prob (count $p2)))
+            ($pp3    (prob (count $p3)))
+            ($pp1p2  (prob (count (, $p1 $p2))))
+            ($pp1p3  (prob (count (, $p1 $p3))))
+            ($pp2p3  (prob (count (, $p2 $p3))))
+            ($maxP   (max (* $pp1p2 $pp3)
+                          (max (* $pp1p3 $pp2)
+                               (max (* $pp2p3 $pp1)
+                                    (* $pp1 (* $pp2 $pp3))))))
+            ($minP   (min (* $pp1p2 $pp3)
+                          (min (* $pp1p3 $pp2)
+                               (min (* $pp2p3 $pp1)
+                                    (* $pp1 (* $pp2 $pp3))))))
+            ($obs    (prob $cnt)))
+       (// (max (- $obs $maxP)
+                (- $minP $obs))
+           $obs)))
+    ;; fallback
+    ($_ 0)))
+\end{verbatim}
+
+For 2-clause patterns:
+\[
+  I = \frac{\max\{\,P_{\mathrm{obs}}-P_{\mathrm{exp}},\;P_{\mathrm{exp}}-P_{\mathrm{obs}}\}}{P_{\mathrm{obs}}},
+  \quad
+  P_{\mathrm{exp}} = P(c_{1})\,P(c_{2}).
+\]
+
+For 3-clause patterns, consider all splits into two independent blocks, compute each block's product probability, take the maximum and minimum of those four values, and then:
+\[
+  I = \frac{\max\{\,P_{\mathrm{obs}}-P_{\mathrm{max}},\;P_{\mathrm{min}}-P_{\mathrm{obs}}\}}{P_{\mathrm{obs}}}.
+\]
+
+Patterns with other clause counts default to zero.
+
+\subsection{Filtering by Surprisingness Threshold}
+
+To filter patterns exceeding a threshold \texttt{highsurp}, use:
+
+\begin{verbatim}
+;; Returns true if I-Surprisingness > highsurp
+(= (isurp? ($pattern $cnt))
+   (if (> (iSurprisingness (candidate $pattern $cnt))
+          (highsurp))
+       true
+       false))
+\end{verbatim}
+
+Or call the high-level function:
+
+\begin{verbatim}
+(miner-surprising atom-space
+                   minsup
+                   max-clauses
+                   highsurp)
+\end{verbatim}
+
+This returns only those patterns whose I-Surprisingness exceeds \texttt{highsurp}.
+
+
+\section{The Pattern Mining Process}
+
+Now we jump into the practical software aspect.   How does pattern mining actually work, leveraging all the contexts introduced above, in the Hyperon framework today?
+
+The Hyperon Pattern Miner is implemented entirely in MeTTa, with its core logic split between two modules:
+
+\begin{itemize}
+  \item \texttt{match/MinerMatch.metta} -- orchestrates the multi-stage mining loop
+  \item \texttt{utils/MinerUtils.metta} -- provides low-level support routines (link extraction, counting, surprisingness, etc.)
+\end{itemize}
+
+Below is a step-by-step walkthrough of how \texttt{(miner \$db \$ms \$depth)} discovers frequent--and optionally surprising--patterns in your AtomSpace.
+
+\subsection{Entry Point: \texttt{miner} and \texttt{miner-surprising}}
+
+In \texttt{match/MinerMatch.metta} you will find two top-level definitions:
+
+\begin{verbatim}
+;; Return all frequent patterns up to `depth' clauses
+(= (miner $db $ms $depth)
+    (superpose
+      ((init-miner $db $ms $highsurp)
+       (let $link (get-links)
+         (get-candidate $depth $link $ms)))))
+
+;; Return only those patterns whose I-Surprisingness > highsurp
+(= (miner-surprising $db $ms $depth $highsurp)
+  (let* (($cptrn (miner $db $ms $depth))
+         ($isurp (iSurprisingness $cptrn)))
+    (if (> $isurp $highsurp)
+        (surp (get-pattern $cptrn) $isurp)
+        (superpose ()))))
+\end{verbatim}
+
+\noindent
+Here:
+\begin{description}
+  \item[\texttt{\$db}] your AtomSpace database
+  \item[\texttt{\$ms}] minimum support threshold
+  \item[\texttt{\$depth}] maximum number of clauses per pattern
+  \item[\texttt{highsurp}] surprisingness threshold (for \texttt{miner-surprising})
+\end{description}
+
+\subsection{Stage 1: Extract Abstract Patterns with \texttt{get-links}}
+
+Abstract patterns are the raw link atoms in your AtomSpace, each turned into a 1-clause template by replacing one endpoint with a \texttt{VariableNode}.  In \texttt{utils/MinerUtils.metta}:
+
+\begin{verbatim}
+(= (get-links)
+   (match &abstractions ($link $x $y) $link))
+\end{verbatim}
+
+\noindent
+This produces skeletons like \texttt{(eval (pred "drink") (list (VarIdx 0) (VarIdx 1)))}.
+
+\subsection{Stage 2: Generate and Filter 1-Clause Candidates via \texttt{get-candidate}}
+
+The function \texttt{get-candidate} handles both base (1-clause) and recursive (N-clause) generation:
+
+\begin{verbatim}
+;; Base case: depth = Z (zero)
+(= (get-candidate Z $linkType $ms)
+   (support (get-pattern (specialize $linkType)) $ms))
+
+;; Recursive case: expand depth = S k
+(= (get-candidate (S $k) $linkType $ms)
+   (let* (($smaller   (get-candidate $k $linkType $ms))
+          ($base      (get-candidate Z $linkType $ms))
+          ($comb-list (combine-with
+                        (get-pattern $smaller)
+                        (get-pattern $base))))
+     (support (flatten $comb-list) $ms)))
+\end{verbatim}
+
+\noindent
+\texttt{specialize} builds concrete variants of each abstract template.  \texttt{support} applies \texttt{count} and filters out those below \texttt{\$ms}.
+
+\subsection{Stage 3: Counting and Support Filtering}
+
+In \texttt{utils/MinerUtils.metta} the raw match count and support test are defined as:
+
+\begin{verbatim}
+;; Count groundings of a pattern
+(= (count $pattern)
+   (let* (($dptrn  (Deb2var $pattern ...))
+          ($result (collapse (match (refdb) $dptrn $dptrn))))
+     (tuple-count $result)))
+
+;; Keep only patterns with count >= minsup
+(= (support $pattern $minsup)
+   (let $cnt (count $pattern)
+     (if (>= $cnt $minsup)
+         (candidate $pattern $cnt)
+         (superpose ()))))
+\end{verbatim}
+
+\subsection{Stage 4: Scoring by I-Surprisingness}
+
+The surprisingness measure is implemented as:
+
+\begin{verbatim}
+(= (iSurprisingness $pattern)
+  (case $pattern
+    ;; 2-clause
+    ((candidate (, $p1 $p2) $cnt)
+     (let* (($pp1   (prob (count $p1)))
+            ($pp2   (prob (count $p2)))
+            ($exp   (* $pp1 $pp2))
+            ($obs   (prob $cnt)))
+       (// (max (- $obs $exp)
+                (- $exp $obs))
+           $obs)))
+    ;; 3-clause
+    ((candidate (, $p1 $p2 $p3) $cnt)
+     ;; compute pairwise and triple-block expectations...
+     ...)
+    ;; other arities
+    ($_ 0)))
+\end{verbatim}
+
+\noindent
+Here \texttt{prob} divides by \texttt{universe-size}, and the numerator measures the largest deviation from the null model.
+
+\subsection{Stage 5: Putting It All Together}
+
+A full mining call looks like:
+
+\begin{verbatim}
+(import! &miner hyperon-miner:match:MinerMatch)
+
+(def results
+  (miner atom-space  ;; your AtomSpace
+         10          ;; minsup
+         3))         ;; max clauses
+
+(def surp-results
+  (miner-surprising atom-space
+                    10    ;; minsup
+                    3     ;; max clauses
+                    0.1)) ;; highsurp
+\end{verbatim}
+
+This single invocation will:
+
+\begin{enumerate}
+  \item Initialize the miner and index link nodes
+  \item Generate and filter 1-clause candidates
+  \item Recursively expand to 2- and 3-clause patterns
+  \item Score patterns by I-Surprisingness (if using \texttt{miner-surprising})
+  \item Return a stream of \texttt{(pattern, score)} entries
+\end{enumerate}
+
+With this mapping to the codebase, you can see exactly how Hyperon Pattern Miner transforms raw AtomSpace data into ranked pattern templates.
+
+
+\section{Your First Pattern Mining Task}
+
+So let's use this process to actually do something!  In this section we run the Hyperon Pattern Miner end-to-end on the provided \texttt{data/sample.metta} dataset, using both the high-level \texttt{miner} API and the example \texttt{frequent-pattern-miner.metta} script.
+
+\subsection{Prepare the AtomSpace and Load Sample Data}
+
+\begin{verbatim}
+;; 1. Import and instantiate AtomSpace
+(import! &asm hyperon-experimental:AtomSpace)
+(def atom-space (atomspace.new))
+
+;; 2. Load the toy dataset (15 human and STV atoms)
+(load-file "data/sample.metta")
+\end{verbatim}
+
+The file \texttt{data/sample.metta} defines a small population of individuals with labels such as \texttt{human}, \texttt{ugly}, and \texttt{sodadrinker}, along with STV (subjective truth value) atoms.
+
+\subsection{Run the High-Level Miner}
+
+First, import the core mining functions:
+
+\begin{verbatim}
+(import! &miner hyperon-miner:match:MinerMatch)
+\end{verbatim}
+
+Then invoke the miner for patterns up to 2 clauses with minimum support 10:
+
+\begin{verbatim}
+(def results
+  (miner atom-space   ;; your AtomSpace
+         10           ;; minsup (minimum support)
+         2))          ;; max-clauses
+\end{verbatim}
+
+To print each pattern and its support count, use:
+
+\begin{verbatim}
+(for-each results
+  (lambda (c)
+    (let (($pat (get-pattern c))
+          ($cnt (get-cnt     c)))
+      (print "Pattern:" $pat)
+      (print "Support:" $cnt)
+      (newline))))
+\end{verbatim}
+
+You should see output such as:
+
+\begin{verbatim}
+Pattern: (inherit ($X) human)           Support: 15
+Pattern: (inherit ($X) sodadrinker)     Support: 12
+Pattern: (and
+            (inherit ($X) ugly)
+            (inherit ($X) sodadrinker)) Support:  8
+...
+\end{verbatim}
+
+\subsection{Filter by Surprisingness}
+
+To retain only those patterns whose I-Surprisingness exceeds 0.2, call:
+
+\begin{verbatim}
+(def surp-results
+  (miner-surprising atom-space
+                    10     ;; minsup
+                    2      ;; max-clauses
+                    0.2))  ;; highsurp threshold
+
+(for-each surp-results
+  (lambda (c)
+    (print (get-pattern c) (get-cnt c))))
+\end{verbatim}
+
+This surfaces only patterns whose co-occurrence deviates significantly from the independence model.
+
+\subsection{Using the Provided Script}
+
+The repository includes an example pipeline in \texttt{experiments/rules/frequent-pattern-miner.metta}. From your shell, run:
+
+\begin{verbatim}
+meTTa -f experiments/rules/frequent-pattern-miner.metta
+\end{verbatim}
+
+This script will:
+\begin{enumerate}
+  \item Register the \texttt{hyperon-miner} module.
+  \item Import the \texttt{data/sample.metta} into its DB space.
+  \item Execute \texttt{(frequent-pattern-miner 5 2)} with \texttt{minsup=5} and \texttt{depth=2}.
+  \item Print all discovered 1- and 2-clause patterns to the REPL.
+\end{enumerate}
+
+With these steps you can quickly mine and inspect both frequent and surprising patterns on any AtomSpace dataset.
+
+
+\section{Advanced Examples and Use Cases}
+
+The \texttt{hyperon-miner} repository also contains code corresponding to a few richer pattern mining scenarios, illustrating how you can adapt and extend the basic mining pipeline for different domains and custom requirements.
+
+\subsection{Mining Attribute Co-occurrence in the Sample Dataset}
+
+The file \texttt{data/sample.metta} defines a toy population of ''humans'' with attributes such as \texttt{man}/\texttt{woman}, \texttt{ugly}/\texttt{beautiful}, and \texttt{sodadrinker}.  You can mine this dataset for surprising attribute co-occurrences:
+
+\begin{verbatim}
+;; 1. Start a fresh AtomSpace and load the sample data
+(def atom-space (atomspace.new))
+(load-file "data/sample.metta")
+
+;; 2. Mine up to 2-clause patterns, requiring at least 5 matches
+(def opts {:graph       atom-space
+           :max-clauses 2
+           :min-freq    5
+           :measure     i-surprisingness})
+
+(def results (miner.mine-patterns opts))
+
+;; 3. Display the top patterns
+(take 5 results)
+\end{verbatim}
+
+Expected output might include:
+
+\begin{verbatim}
+(and 
+  (inherit ($X) sodadrinker)
+  (inherit ($X) man))    ; freq: 12, I-surprisingness: +1.2
+
+(and 
+  (inherit ($X) sodadrinker)
+  (inherit ($X) ugly))   ; freq:  8, I-surprisingness: +0.8
+\end{verbatim}
+
+\subsection{Specialized Pipeline via \texttt{frequent-pattern-miner.metta}}
+
+The script \texttt{experiments/rules/frequent-pattern-miner.metta} automates data loading, mining, and scoring:
+
+\begin{verbatim}
+! (register-module! ../../../hyperon-miner)
+! (import! &db    hyperon-miner:experiments:data:ugly_man_sodaDrinker)
+! (import! &rules hyperon-miner:experiments:rules:build-specialization)
+! (import! &rules hyperon-miner:experiments:rules:candidate-patterns)
+! (import! &rules hyperon-miner:experiments:rules:conjunction-expansion)
+
+(frequent-pattern-miner
+  :minsup    3   ;; minimum support
+  :max-conj  2   ;; up to 2-clause patterns
+  :measure   i-surprisingness)
+\end{verbatim}
+
+Running this yields a ranked list of the most frequent and surprising 1- and 2-clause patterns in the dataset.
+
+\subsection{Custom Conjunction Expansion}
+
+To experiment with alternative pattern-joining strategies, call the low-level conjunction module directly:
+
+\begin{verbatim}
+! (import! &candidate-patterns hyperon-miner:experiments:rules:candidate-patterns)
+! (import! &conj-exp         hyperon-miner:experiments:rules:conjunction-expansion)
+
+;; 1. Generate 1-clause candidates above support threshold 5
+(def cands (candidate-patterns &dbspace :minsup 5))
+
+;; 2. Expand to 2-clause patterns with custom rules
+(def expansions (conj-exp cands :max-depth 2))
+
+;; 3. Score and sort manually
+(map (lambda (pat)
+       (list pat (miner.score-pattern pat :measure i-surprisingness)))
+     expansions)
+\end{verbatim}
+
+This lets you control which variable merges are allowed before support filtering.
+
+\subsection{Type-Constrained Mining via Dependent Types}
+
+The \texttt{dependent-types/} folder shows how to enforce structural constraints on patterns:
+
+\begin{verbatim}
+;; 1. Load the dependent-type miner module
+(load-file "dependent-types/MinerCurriedDTL.metta")
+
+;; 2. Instantiate a type-aware miner
+(def typed-miner (MinerCurriedDTL atom-space))
+
+;; 3. Mine patterns respecting DTL rules
+(def dtl-results
+  (typed-miner.mine-patterns
+    :max-clauses 3
+    :min-freq    4
+    :measure     i-surprisingness))
+\end{verbatim}
+
+Only patterns meeting your dependent-type invariants will survive.
+
+\subsection{JSD-Based Surprisingness}
+
+You can use a Jensen-Shannon Divergence measure from \texttt{experiments/rules/jsd-surpr}:
+
+\begin{verbatim}
+;; 1. Register the JSD measure
+(import! &jsd-s hyperon-miner:experiments:rules:jsd-surpr)
+(jsd-surprisingness/register)
+
+;; 2. Mine patterns using JSD
+(def jsd-results
+  (miner.mine-patterns
+    :graph       atom-space
+    :max-clauses 2
+    :min-freq    5
+    :measure     jsd-surprisingness))
+
+;; 3. Inspect top JSD-surprising patterns
+(for-each jsd-results
+  (lambda (c)
+    (print (get-pattern c) (get-cnt c) (get-score c))))
+\end{verbatim}
+
+This surfaces clause pairs whose joint distribution diverges most from independence.
+
+\subsection{Empirical Truth-Value (EMPTV) Scoring}
+
+When your AtomSpace uses STV atoms, convert pattern probabilities into STV judgments:
+
+\begin{verbatim}
+;; 1. Import the EMPTV rule
+(import! &etv-ex hyperon-miner:experiments:rules:emp-tv)
+
+;; 2. Mine 1-clause patterns with support >= 8
+(def raw-patterns
+  (miner atom-space 8 1))
+
+;; 3. Tag each with an STV
+(def stv-patterns
+  (map raw-patterns
+    (lambda (c)
+      (let* (($pat   (get-pattern c))
+             ($cnt   (get-cnt     c))
+             ($prob  (prob       $cnt))
+             ;; default lookahead = 1 -> confidence = cnt/(cnt+1)
+             ($stv   (EMPTV $pat atom-space $prob)))
+        (list $pat $cnt $stv)))))
+\end{verbatim}
+
+You will get a list of triples:
+
+\begin{verbatim}
+(pattern)   support-count   (stv pattern probability confidence)
+\end{verbatim}
+
+allowing you to filter by both frequency and subjective confidence in one pass.
+
+\section{Exercises to Build Understanding}
+
+Here are a few exercises to try, based on the simple example knowledge bases in the \texttt{hyperon-miner}  repository.
+
+XXX INSERT SOME EXERCISES FOR THE READER TO TRY HERE.   These should involve writing MeTTa code to direct the Pattern Miner to do specific things.   If the examples in the hyperon-miner are too small to support any interesting exercises, you can make a slightly larger knowledge base XXX

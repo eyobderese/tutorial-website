@@ -1,0 +1,146 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{hyperref}
+
+\title{Calculus Fundamentals}
+\author{TutorialHub Team}
+\date{June 10, 2023}
+\keywords{Calculus, Derivatives, Integrals, Limits}
+\category{Mathematics}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This tutorial covers the fundamental concepts of calculus, including limits, derivatives, and integrals. We'll explore key theorems and practical applications.
+\end{abstract}
+
+\section{Introduction to Calculus}
+
+Calculus is the mathematical study of continuous change. It has two major branches: differential calculus (concerning rates of change and slopes of curves) and integral calculus (concerning accumulation of quantities and the areas under curves).
+
+\section{Limits}
+
+The concept of a limit is fundamental to calculus. Informally, the limit of a function at a point is the value that the function approaches as its input approaches that point.
+
+\subsection{Definition of a Limit}
+
+We say that the limit of $f(x)$ as $x$ approaches $a$ is $L$, written as:
+
+$$\lim_{x \to a} f(x) = L$$
+
+if for every $\epsilon > 0$, there exists a $\delta > 0$ such that:
+
+$$0 < |x - a| < \delta \implies |f(x) - L| < \epsilon$$
+
+\subsection{Properties of Limits}
+
+For functions $f$ and $g$ and constants $a$ and $c$:
+
+\begin{align}
+\lim_{x \to a} [f(x) + g(x)] &= \lim_{x \to a} f(x) + \lim_{x \to a} g(x) \\
+\lim_{x \to a} [f(x) \cdot g(x)] &= \lim_{x \to a} f(x) \cdot \lim_{x \to a} g(x) \\
+\lim_{x \to a} \frac{f(x)}{g(x)} &= \frac{\lim_{x \to a} f(x)}{\lim_{x \to a} g(x)}, \text{ if } \lim_{x \to a} g(x) \neq 0 \\
+\lim_{x \to a} c \cdot f(x) &= c \cdot \lim_{x \to a} f(x)
+\end{align}
+
+\section{Derivatives}
+
+The derivative of a function represents its rate of change. Geometrically, it represents the slope of the tangent line to the function's graph at a given point.
+
+\subsection{Definition of a Derivative}
+
+The derivative of a function $f(x)$ with respect to $x$ is defined as:
+
+$$f'(x) = \lim_{h \to 0} \frac{f(x + h) - f(x)}{h}$$
+
+\subsection{Common Derivative Rules}
+
+\begin{align}
+\frac{d}{dx}(c) &= 0 \text{ (constant rule)} \\
+\frac{d}{dx}(x^n) &= nx^{n-1} \text{ (power rule)} \\
+\frac{d}{dx}(e^x) &= e^x \text{ (exponential rule)} \\
+\frac{d}{dx}(\ln x) &= \frac{1}{x} \text{ (logarithm rule)} \\
+\frac{d}{dx}(\sin x) &= \cos x \text{ (sine rule)} \\
+\frac{d}{dx}(\cos x) &= -\sin x \text{ (cosine rule)}
+\end{align}
+
+\subsection{Product Rule}
+
+If $f$ and $g$ are differentiable functions, then:
+
+$$\frac{d}{dx}[f(x) \cdot g(x)] = f'(x) \cdot g(x) + f(x) \cdot g'(x)$$
+
+\subsection{Chain Rule}
+
+If $f$ and $g$ are differentiable functions and $y = f(g(x))$, then:
+
+$$\frac{dy}{dx} = \frac{df}{dg} \cdot \frac{dg}{dx}$$
+
+\section{Integrals}
+
+Integration is the reverse process of differentiation. It allows us to find the accumulated value of a function over an interval.
+
+\subsection{Indefinite Integrals}
+
+The indefinite integral of a function $f(x)$ is written as:
+
+$$\int f(x) \, dx = F(x) + C$$
+
+where $F'(x) = f(x)$ and $C$ is an arbitrary constant.
+
+\subsection{Definite Integrals}
+
+The definite integral of a function $f(x)$ from $a$ to $b$ is defined as:
+
+$$\int_a^b f(x) \, dx = F(b) - F(a)$$
+
+where $F'(x) = f(x)$.
+
+\subsection{Fundamental Theorem of Calculus}
+
+The Fundamental Theorem of Calculus connects differentiation and integration:
+
+If $f$ is continuous on $[a, b]$ and $F$ is an antiderivative of $f$, then:
+
+$$\int_a^b f(x) \, dx = F(b) - F(a)$$
+
+\subsection{Common Integration Rules}
+
+\begin{align}
+\int x^n \, dx &= \frac{x^{n+1}}{n+1} + C, \text{ for } n \neq -1 \\
+\int e^x \, dx &= e^x + C \\
+\int \frac{1}{x} \, dx &= \ln|x| + C \\
+\int \sin x \, dx &= -\cos x + C \\
+\int \cos x \, dx &= \sin x + C
+\end{align}
+
+\section{Applications of Calculus}
+
+Calculus has numerous applications in physics, engineering, economics, and other fields.
+
+\subsection{Finding Maxima and Minima}
+
+To find the maximum or minimum values of a function:
+\begin{enumerate}
+  \item Find the critical points by solving $f'(x) = 0$
+  \item Use the second derivative test: if $f''(x) < 0$ at a critical point, it's a maximum; if $f''(x) > 0$, it's a minimum
+\end{enumerate}
+
+\subsection{Area Between Curves}
+
+The area between two curves $f(x)$ and $g(x)$ from $x = a$ to $x = b$ is:
+
+$$\text{Area} = \int_a^b |f(x) - g(x)| \, dx$$
+
+\subsection{Volumes of Revolution}
+
+The volume of a solid formed by rotating the region bounded by $y = f(x)$, the x-axis, and the lines $x = a$ and $x = b$ around the x-axis is:
+
+$$V = \pi \int_a^b [f(x)]^2 \, dx$$
+
+\end{document}
