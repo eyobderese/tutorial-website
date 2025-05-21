@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { Check, Clipboard, Play, Lock, Unlock, RefreshCw } from "lucide-react"
+import { Check, Clipboard, Play, Lock, Unlock, RefreshCw, Loader } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -19,7 +19,7 @@ export function CodeEditor({
   code: initialCode,
   language,
   readOnly: initialReadOnly = false,
-  showLineNumbers = true,
+  showLineNumbers = false,
   className = "",
 }: CodeEditorProps) {
   const [code, setCode] = useState(initialCode)
@@ -28,6 +28,7 @@ export function CodeEditor({
   const [error, setError] = useState<string | null>(null)
   const [isExecuting, setIsExecuting] = useState(false)
   const [isCopied, setIsCopied] = useState(false)
+  const [hasRun, setHasRun] = useState(false)
   const codeTextareaRef = useRef<HTMLTextAreaElement>(null)
   const resultTextareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -36,6 +37,7 @@ export function CodeEditor({
     setCode(initialCode)
     setOutput("")
     setError(null)
+    setHasRun(false)
   }
 
   // Toggle read-only mode
@@ -92,6 +94,7 @@ export function CodeEditor({
       console.error("Execution error:", err)
     } finally {
       setIsExecuting(false)
+      setHasRun(true)
     }
   }
 
@@ -111,16 +114,29 @@ export function CodeEditor({
     }
   }, [output, error])
 
-  // Get the content to display in the result area
-  const getResultContent = () => {
+  // Get the button based on execution state
+  const getExecutionButton = () => {
     if (isExecuting) {
-      return "Executing code..."
-    } else if (error) {
-      return error
-    } else if (output) {
-      return output
+      return (
+        <Button variant="secondary" size="sm" disabled className="flex items-center gap-2">
+          <Loader className="h-4 w-4 animate-spin" />
+          Running...
+        </Button>
+      )
+    } else if (hasRun) {
+      return (
+        <Button variant="outline" size="sm" onClick={handleReset} className="flex items-center gap-2">
+          <RefreshCw className="h-4 w-4" />
+          Reset
+        </Button>
+      )
     } else {
-      return "Click the Run button to execute the code and see the results here."
+      return (
+        <Button variant="outline" size="sm" onClick={executeCode} className="flex items-center gap-2">
+          <Play className="h-6 w-6" />
+          Run
+        </Button>
+      )
     }
   }
 
@@ -128,11 +144,10 @@ export function CodeEditor({
     <div className={`code-editor-container ${className}`}>
       {/* Code Editor */}
       <Card className="border rounded-md overflow-hidden mb-4">
-        <div className="group flex items-center justify-between bg-muted p-2 border-b">
-          <div className="flex items-center gap-2">
-            <Badge variant="outline">{language || "metta"}</Badge>
-            <Badge variant="secondary">Editor</Badge>
-          </div>
+        <div className="group flex items-center justify-between bg-muted p-1 border-b">
+        
+            <Badge variant="outline"> Code </Badge>
+          
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
             <TooltipProvider>
               <Tooltip>
@@ -183,61 +198,90 @@ export function CodeEditor({
             readOnly={readOnly}
             className={`w-full font-mono text-sm p-4 min-h-[200px] resize-none bg-background focus:outline-none ${
               readOnly ? "cursor-default" : ""
-            } ${showLineNumbers ? "pl-12" : ""}`}
+            } `}
             style={{
               lineHeight: "1.5",
               tabSize: 2,
             }}
           />
-          {showLineNumbers && (
-            <div className="absolute left-0 top-0 bottom-0 w-8 bg-muted text-muted-foreground font-mono text-xs p-4 text-right select-none">
-              {code.split("\n").map((_, i) => (
-                <div key={i}>{i + 1}</div>
-              ))}
-            </div>
-          )}
+
         </div>
       </Card>
 
       {/* Result Editor */}
-<div className="space-y-2">
-  {/* Always visible control bar */}
-  <div className="flex items-center gap-2">
-    <Button
-      variant="secondary"
-      size="sm"
-      onClick={executeCode}
-      disabled={isExecuting}
-      className="gap-2 min-w-[80px] justify-center"
-    >
-      {isExecuting ? (
-        <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-blue-500"></div>
-      ) : (
-        "Run"
-      )}
-    </Button>
-  </div>
+      <Card className={` ${hasRun ? " overflow-hidden border rounded-md ": " border-none"} `}>
+        <div className={`group flex items-center justify-between    ${hasRun ? "bg-muted border-b p-2" : ""}`}>
+          <div className="flex items-center gap-2">
+            {getExecutionButton()}
+            {(output || error) && <Badge variant={error ? "destructive" : "secondary"}>{error ? "Error" : ""}</Badge>}
+          </div>
+          {(output || error) && (
+            <div className="flex items-center gap-1">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" onClick={() => {
+                      navigator.clipboard.writeText(getResultContent());
+                      setIsCopied(true);
+                      setTimeout(() => setIsCopied(false), 2000);
+                    }}>
+                      {isCopied ? <Check className="h-4 w-4" /> : <Clipboard className="h-4 w-4" />}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Copy result</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+          )}
+        </div>
 
-  {/* Result display - appears only when there's content */}
-  {resultTextareaRef.current?.value && (
-    <Card className="border rounded-md overflow-hidden">
-      <div className="relative">
-        <textarea
-          ref={resultTextareaRef}
-          value={getResultContent()}
-          readOnly
-          className={`w-full font-mono text-sm p-4 min-h-[150px] resize-none focus:outline-none cursor-default ${
-            error ? "text-red-500 dark:text-red-400" : ""
-          }`}
-          style={{
-            lineHeight: "1.5",
-            backgroundColor: error ? "rgba(254, 226, 226, 0.2)" : "",
-          }}
-        />
-      </div>
-    </Card>
-  )}
-</div>
+        <div className="relative">
+          {(!hasRun && !isExecuting) ? (
+            <div className="flex items-center justify-center p-8 text-muted-foreground">
+ 
+            </div>
+          ) : (
+             <textarea
+              ref={resultTextareaRef}
+              value={getResultContent()}
+              readOnly
+              className={`w-full font-mono text-sm p-4 resize-none focus:outline-none cursor-default bg-background ${
+                error ? "text-red-500 dark:text-red-400" : ""
+              } ${isExecuting ? "text-gray-500 dark:text-gray-400" : ""}`}
+              style={{
+                lineHeight: "1.5",
+                minHeight: "auto",
+                height: "auto",
+                overflow: "hidden",
+                backgroundColor: error ? "rgba(254, 226, 226, 0.2)" : isExecuting ? "rgba(229, 231, 235, 0.2)" : "",
+              }}
+            />
+          )}
+          {isExecuting && (
+            <div className="absolute top-0 left-0 right-0 bottom-0 flex items-center justify-center bg-background bg-opacity-70">
+              <div className="flex flex-col items-center gap-3">
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+                <span className="text-sm font-medium">Executing code...</span>
+              </div>
+            </div>
+          )}
+        </div>
+      </Card>
     </div>
   )
+
+  // Get the content to display in the result area
+  function getResultContent() {
+    if (isExecuting) {
+      return "Executing code..."
+    } else if (error) {
+      return error
+    } else if (output) {
+      return output
+    } else {
+      return ""
+    }
+  }
 }
