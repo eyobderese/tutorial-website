@@ -285,7 +285,7 @@ function cleanLatexText(text: string): string {
   // Replace common LaTeX commands with HTML equivalents
   let cleaned = text
     .replace(/\\textbf\{([^}]+)\}/g, "<strong>$1</strong>") // Bold
-    .replace(/\\textit\{([^}]+)\}/g, "<em>$1</em>") // Italic
+    .replace(/\\texttt\{([^}]+)\}/g, "<em>$1</em>") // Italic
     .replace(/\\emph\{([^}]+)\}/g, "<em>$1</em>") // Emphasis
     .replace(/\\underline\{([^}]+)\}/g, "<u>$1</u>") // Underline
     .replace(/\\cite\{([^}]+)\}/g, "[Citation: $1]") // Citations
