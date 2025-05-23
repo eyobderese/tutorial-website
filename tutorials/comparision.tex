@@ -1,3 +1,15 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{hyperref}
+
+\title{Comparisons}
+
+\begin{document}
+
+
 \section{Comparison to Other Pattern Mining Approaches}
 
 The Hyperon Pattern Miner differs from classical pattern mining methods in several key respects.   A full literature review would go far beyond the scope of this tutorial, but we'll take a few. moments to briefly compare the Pattern Miner's design and capabilities to several well-known approaches for mining patterns from structures like relational databases or graphs.   To make things concrete we'll depict each approach reviewed via a crude pseudocode sketch.  Actual implementations are of course often (sometimes tremendously) more complex for scalability reasons.
@@ -139,3 +151,5 @@ Aleph constructs, for each positive example, a \emph{bottom clause}--the most sp
   \item \textbf{Extensibility}:  
     Many mining algorithms are fixed pipelines written in low-level languages, making customization difficult.  Hyperon's entire pipeline lives in MeTTa scripts under \texttt{match/} and \texttt{experiments/}, so you can modify conjunction logic, add dependent-type filters, or plug in new scoring measures without touching C++ or restarting the system.  This flexibility accelerates experimentation and domain adaptation, enabling rapid prototyping of novel pattern-driven learning workflows.
 \end{itemize}
+
+\end{document}

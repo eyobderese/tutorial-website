@@ -1,3 +1,27 @@
+\documentclass{article}
+
+% ----------- core mathematics -----------
+\usepackage{amsmath}   % align, split, cases, etc.
+\usepackage{amssymb}   % \mathbb, \mathcal, \leqslant, \geqslant ...
+\usepackage{amsfonts}  % blackboard bold, fraktur if desired
+\usepackage{graphicx}  % for future figures, even if none are included yet
+\usepackage{listings}  % for code examples
+\usepackage{hyperref}  % clickable cross-refs; load last
+\usepackage{mdframed}  % for boxed content
+
+% ----------- tables & arrays ------------
+\usepackage{array}     % extended column specifiers in tabular
+\usepackage{booktabs}  % nicer horizontal rules (optional; you may keep \hline)
+\usepackage{multirow}  % multi-row cells if you extend the tables later
+
+% ----------- layout & floats ------------
+\usepackage{geometry}  % easy margin control (defaults are fine; optional)
+\usepackage{caption}   % better caption spacing for tables/figures
+
+\title{Surprisingness }
+
+\begin{document}
+
 \section{Understanding Surprisingness}
 
 Surprisingness (or "interestingness") in the Hyperon Pattern Miner is implemented in \texttt{utils/MinerUtils.metta} by the I-Surprisingness measure. It compares each pattern's empirical probability against an expected probability under a simple independence-based null model, then normalizes the largest deviation.
@@ -515,3 +539,5 @@ allowing you to filter by both frequency and subjective confidence in one pass.
 Here are a few exercises to try, based on the simple example knowledge bases in the \texttt{hyperon-miner}  repository.
 
 XXX INSERT SOME EXERCISES FOR THE READER TO TRY HERE.   These should involve writing MeTTa code to direct the Pattern Miner to do specific things.   If the examples in the hyperon-miner are too small to support any interesting exercises, you can make a slightly larger knowledge base XXX
+
+\end{document}

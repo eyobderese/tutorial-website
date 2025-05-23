@@ -12,14 +12,14 @@ export default function HomePage() {
                 Learn with Interactive Tutorials
               </h1>
               <p className="max-w-[800px] mx-auto text-lg text-muted-foreground md:text-xl">
-                Explore our comprehensive collection of tutorials on algorithms, mathematics, and programming concepts.
+                Explore our hyperon pattern miner core concepts , algorithms and way of implementations .
               </p>
             </div>
             <div className="space-x-4 pt-6">
               <Link href="/tutorials">
-                <Button size="lg" className="text-base">Browse Tutorials</Button>
+                <Button size="lg" className="text-base">Pattern Miner Tutorial</Button>
               </Link>
-              <Link href="/algorithms">
+              <Link href="https://metta-lang.dev/docs/learn/learn.html">
                 <Button variant="outline" size="lg" className="text-base">Learn MeTTa</Button>
               </Link>
             </div>

@@ -9,9 +9,8 @@ import Script from "next/script"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata = {
-  title: "TutorialHub - Interactive Learning Platform",
-  description: "Learn algorithms, mathematics, and programming concepts with interactive tutorials",
-    generator: 'v0.dev'
+  title: "Tutorial - Hyperon Pattern miner tutorial ",
+  description: "Learn the hyperon pattern miner core concepts and algorithms ",
 }
 
 export default function RootLayout({
@@ -29,7 +28,7 @@ export default function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <div className="flex flex-col min-h-screen">
                 <div className="px-5" >
-               <SiteHeader />
+                 <SiteHeader />
                </div>
            
             <main className="flex-1 px-5 ">{children}</main>
