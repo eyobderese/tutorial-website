@@ -32,7 +32,7 @@ export async function searchRawLatexFiles(query: string): Promise<SearchResult[]
     try {
       await fs.access(tutorialsDirectory)
     } catch (e) {
-      console.error("Tutorials directory does not exist")
+      console.error(`Tutorials directory does not exist or ${e}`)
       return []
     }
 

@@ -1,4 +1,3 @@
-import Link from "next/link"
 import type React from "react"
 import "@/app/globals.css"
 import { Inter } from "next/font/google"

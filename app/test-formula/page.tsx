@@ -16,9 +16,7 @@ export default function TestFormulaPage() {
 \\frac{d}{dx}(\\cos x) &= -\\sin x \\text{ (cosine rule)}
 \\end{align}`)
 
-  const [productRule, setProductRule] = useState(
-    `\\frac{d}{dx}[f(x) \\cdot g(x)] = f'(x) \\cdot g(x) + f(x) \\cdot g'(x)`,
-  )
+  
 
   return (
     <div className="container py-8">

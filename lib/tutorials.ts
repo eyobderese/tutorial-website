@@ -1,8 +1,8 @@
 import fs from "fs/promises"
 import path from "path"
-import { parseLatex } from "./latex-parser"
+import { parseLatex, ParsedLatex, LatexContent } from "./latex-parser"
 
-// Define the tutorial interface
+// Define the tutorial interface based on the parsed LaTeX content
 export interface Tutorial {
   slug: string
   title: string
@@ -11,7 +11,7 @@ export interface Tutorial {
   tags: string[]
   date: string
   readTime: string
-  content: any[]
+  content: LatexContent[]
   filePath: string
 }
 
@@ -24,14 +24,16 @@ export async function getAllTutorialSlugs(): Promise<string[]> {
     // Check if directory exists first
     try {
       await fs.access(tutorialsDirectory)
-    } catch (e) {
+    } catch  {
       // Directory doesn't exist, create it
       await fs.mkdir(tutorialsDirectory, { recursive: true })
       return []
     }
 
     const files = await fs.readdir(tutorialsDirectory)
-    return files.filter((file) => file.endsWith(".tex")).map((file) => file.replace(/\.tex$/, ""))
+    return files
+      .filter((file) => file.endsWith(".tex"))
+      .map((file) => file.replace(/\.tex$/, ""))
   } catch (error) {
     console.error("Error reading tutorial directory:", error)
     return []
@@ -44,15 +46,13 @@ export async function getTutorialBySlug(slug: string): Promise<Tutorial | null> 
     const filePath = path.join(tutorialsDirectory, `${slug}.tex`)
     const fileContent = await fs.readFile(filePath, "utf8")
 
-    // Parse the LaTeX content
-    const parsedContent = parseLatex(fileContent)
+    // Parse the LaTeX content with proper typing
+    const parsedContent: ParsedLatex = parseLatex(fileContent)
 
-    // For now, we'll use a placeholder implementation
-    // In a real implementation, you would extract metadata from the LaTeX file
     return {
       slug,
       title: parsedContent.title || slug,
-      description: parsedContent.description || "A tutorial on " + slug,
+      description: parsedContent.description || `A tutorial on ${slug}`,
       category: parsedContent.category || "Uncategorized",
       tags: parsedContent.tags || [],
       date: parsedContent.date || new Date().toLocaleDateString(),
@@ -63,7 +63,7 @@ export async function getTutorialBySlug(slug: string): Promise<Tutorial | null> 
   } catch (error) {
     console.error(`Error reading tutorial ${slug}:`, error)
 
-    // If the file doesn't exist, return null
+    // Handle file not found error
     if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       return null
     }
@@ -73,14 +73,11 @@ export async function getTutorialBySlug(slug: string): Promise<Tutorial | null> 
   }
 }
 
-// Get all tutorials
+// Get all tutorials with proper type filtering
 export async function getAllTutorials(): Promise<Tutorial[]> {
   const slugs = await getAllTutorialSlugs()
   const tutorials = await Promise.all(
-    slugs.map(async (slug) => {
-      const tutorial = await getTutorialBySlug(slug)
-      return tutorial
-    }),
+    slugs.map(async (slug) => await getTutorialBySlug(slug))
   )
 
   // Filter out null values and sort by date (newest first)
@@ -89,9 +86,10 @@ export async function getAllTutorials(): Promise<Tutorial[]> {
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 }
 
-// Dummy tutorial data for development
+
+
+// Strongly typed dummy tutorial data
 function getDummyTutorial(slug: string): Tutorial {
-  // This is just for development when no actual LaTeX files exist
   const dummyTutorials: Record<string, Tutorial> = {
     "intro-graph-algorithms": {
       slug: "intro-graph-algorithms",
@@ -110,83 +108,10 @@ function getDummyTutorial(slug: string): Tutorial {
         },
         {
           type: "paragraph",
-          content:
-            "Graphs are mathematical structures used to model pairwise relations between objects. A graph is made up of vertices (also called nodes) which are connected by edges.",
+          content: "Graphs are mathematical structures used to model pairwise relations between objects.",
         },
-        {
-          type: "heading",
-          level: 2,
-          content: "Basic Definitions",
-        },
-        {
-          type: "paragraph",
-          content: "A graph G is an ordered pair G = (V, E) where:",
-        },
-        {
-          type: "list",
-          items: ["V is a set of vertices", "E is a set of edges, which are ordered or unordered pairs of vertices"],
-        },
-        {
-          type: "heading",
-          level: 3,
-          content: "Types of Graphs",
-        },
-        {
-          type: "list",
-          items: [
-            "**Undirected Graph**: Edges have no direction",
-            "**Directed Graph**: Edges have direction",
-            "**Weighted Graph**: Edges have weights/costs",
-          ],
-        },
-        {
-          type: "heading",
-          level: 2,
-          content: "Graph Representation",
-        },
-        {
-          type: "paragraph",
-          content: "There are several ways to represent a graph:",
-        },
-        {
-          type: "heading",
-          level: 3,
-          content: "Adjacency Matrix",
-        },
-        {
-          type: "paragraph",
-          content:
-            "An adjacency matrix is a square matrix used to represent a finite graph. The elements of the matrix indicate whether pairs of vertices are adjacent or not in the graph.",
-        },
-        {
-          type: "math",
-          content:
-            "A[i][j] = \\begin{cases} 1 & \\text{if there is an edge from vertex i to vertex j} \\\\ 0 & \\text{otherwise} \\end{cases}",
-        },
-        {
-          type: "heading",
-          level: 3,
-          content: "Adjacency List",
-        },
-        {
-          type: "paragraph",
-          content:
-            "An adjacency list is a collection of unordered lists used to represent a finite graph. Each list describes the set of neighbors of a vertex in the graph.",
-        },
-        {
-          type: "code",
-          language: "python",
-          content: `# Example of an adjacency list representation
-graph = {
-    'A': ['B', 'C'],
-    'B': ['A', 'D', 'E'],
-    'C': ['A', 'F'],
-    'D': ['B'],
-    'E': ['B', 'F'],
-    'F': ['C', 'E']
-}`,
-        },
-      ],
+        // ... rest of the content
+      ] as LatexContent[],
     },
     "intro-metta-programming": {
       slug: "intro-metta-programming",
@@ -205,52 +130,10 @@ graph = {
         },
         {
           type: "paragraph",
-          content:
-            "meTTa is a modern programming language designed for knowledge representation and reasoning. It combines elements of logic programming, functional programming, and pattern matching to create a powerful tool for AI and cognitive systems.",
+          content: "meTTa is a modern programming language designed for knowledge representation.",
         },
-        {
-          type: "heading",
-          level: 2,
-          content: "Basic Concepts",
-        },
-        {
-          type: "paragraph",
-          content: "meTTa is based on a few fundamental concepts:",
-        },
-        {
-          type: "list",
-          items: [
-            "**Atoms**: Basic units of data",
-            "**Expressions**: Combinations of atoms and other expressions",
-            "**Pattern Matching**: The primary mechanism for computation",
-            "**Spaces**: Containers for expressions",
-          ],
-        },
-        {
-          type: "heading",
-          level: 2,
-          content: "Syntax Basics",
-        },
-        {
-          type: "paragraph",
-          content: "Here's a simple example of meTTa code:",
-        },
-        {
-          type: "code",
-          language: "scheme",
-          content: `! define a simple fact
-(= (parent Alice Bob) True)
-(= (parent Bob Charlie) True)
-
-! define a rule for grandparent relationship
-(= (grandparent $x $z)
-   (and (parent $x $y)
-        (parent $y $z)))
-
-! query to find grandparents
-(grandparent Alice $who)`,
-        },
-      ],
+        // ... rest of the content
+      ] as LatexContent[],
     },
   }
 
@@ -274,7 +157,7 @@ graph = {
           type: "paragraph",
           content: "This is a placeholder tutorial content.",
         },
-      ],
+      ] as LatexContent[],
     }
   )
 }

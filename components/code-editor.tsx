@@ -17,9 +17,8 @@ interface CodeEditorProps {
 
 export function CodeEditor({
   code: initialCode,
-  language,
+
   readOnly: initialReadOnly = false,
-  showLineNumbers = false,
   className = "",
 }: CodeEditorProps) {
   const [code, setCode] = useState(initialCode)
