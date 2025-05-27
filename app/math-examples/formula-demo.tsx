@@ -16,7 +16,7 @@ export function FormulaDemo() {
 \\frac{d}{dx}(\\cos x) &= -\\sin x \\text{ (cosine rule)}
 \\end{align}`)
 
-  const [productRule, setProductRule] = useState(
+  const [productRule] = useState(
     `\\frac{d}{dx}[f(x) \\cdot g(x)] = f'(x) \\cdot g(x) + f(x) \\cdot g'(x)`,
   )
 

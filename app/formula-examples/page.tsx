@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { useRouter } from "next/navigation"
+
 
 // Define formula data
 const formulas = [
@@ -87,7 +87,7 @@ const formulas = [
 
 export default function FormulaExamplesPage() {
   const pageRef = useRef<HTMLDivElement>(null)
-  const router = useRouter()
+
 
   // Initialize MathJax on the entire page
   useEffect(() => {

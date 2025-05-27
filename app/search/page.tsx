@@ -14,7 +14,7 @@ export default async function SearchPage({
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-2">
           <h1 className="text-3xl font-bold tracking-tight">No Results Found</h1>
-          <p className="text-muted-foreground">No results found for "{query}"</p>
+          <p className="text-muted-foreground">{` No results found for ${query}`}</p>
         </div>
 
         <div className="text-center py-12">

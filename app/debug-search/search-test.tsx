@@ -8,9 +8,20 @@ import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
 
+interface SearchResult {
+  url: string
+  title: string
+  relevance: number
+  sectionTitle?: string
+  description: string
+  matchContext?: string
+  category: string
+  tags: string[]
+}
+
 export function SearchTest() {
   const [searchQuery, setSearchQuery] = useState("")
-  const [results, setResults] = useState<any[]>([])
+  const [results, setResults] = useState<SearchResult[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const [debugInfo, setDebugInfo] = useState("")
   const [error, setError] = useState<string | null>(null)
@@ -29,8 +40,8 @@ export function SearchTest() {
         throw new Error(`Search API returned ${response.status}: ${response.statusText}`)
       }
 
-      const data = await response.json()
-
+      const data: SearchResult[] = await response.json()
+      
       setResults(data)
       setDebugInfo(
         `Search complete. Found ${data.length} results for "${searchQuery.trim()}"\n\n` +
@@ -38,8 +49,9 @@ export function SearchTest() {
       )
     } catch (error) {
       console.error("Search error:", error)
-      setError(error instanceof Error ? error.message : String(error))
-      setDebugInfo(`Error searching: ${error instanceof Error ? error.message : String(error)}`)
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      setError(errorMessage)
+      setDebugInfo(`Error searching: ${errorMessage}`)
     } finally {
       setIsSearching(false)
     }
@@ -87,7 +99,7 @@ export function SearchTest() {
           <CardHeader>
             <CardTitle>Search Results</CardTitle>
             <CardDescription>
-              Found {results.length} results for "{searchQuery}"
+              {`Found ${results.length} results for "${searchQuery}"`}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -120,7 +132,7 @@ export function SearchTest() {
                     <Badge variant="outline" className="text-xs">
                       {result.category}
                     </Badge>
-                    {result.tags.map((tag: string, i: number) => (
+                    {result.tags.map((tag, i) => (
                       <Badge key={i} variant="secondary" className="text-xs">
                         {tag}
                       </Badge>
