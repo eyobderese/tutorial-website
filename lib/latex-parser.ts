@@ -234,25 +234,34 @@ function extractListContent(content: string, result: LatexContent[]): void {
 }
 
 function cleanLatexText(text: string): string {
-  return text
-    .replace(/\\textbf\{([^}]+)\}/g, "<strong>$1</strong>")
-    .replace(/\\textit\{([^}]+)\}/g, "<em>$1</em>")
-    .replace(/\\emph\{([^}]+)\}/g, "<em>$1</em>")
-    .replace(/\\underline\{([^}]+)\}/g, "<u>$1</u>")
-    .replace(/\\cite\{([^}]+)\}/g, "[Citation: $1]")
-    .replace(/\\ref\{([^}]+)\}/g, "[Ref: $1]")
-    .replace(/\\url\{([^}]+)\}/g, "<a href='$1'>$1</a>")
-    .replace(/\\href\{([^}]+)\}\{([^}]+)\}/g, "<a href='$1'>$2</a>")
-    .replace(/\\footnote\{([^}]+)\}/g, "")
-    .replace(/\\\\/, "<br>")
-    .replace(/~/g, " ")
-    .replace(/\\%/g, "%")
-    .replace(/\\&/g, "&")
-    .replace(/\\_/g, "_")
-    .replace(/\\#/g, "#")
-    .replace(/\\{/g, "{")
-    .replace(/\\}/g, "}")
-    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
-    .replace(/\\[a-zA-Z]+(\{[^}]*\})?/g, "")
-    .trim()
+
+  // Clean up LaTeX commands and formatting
+  // This is a very simplified version - a real implementation would be more comprehensive
+
+  // Replace common LaTeX commands with HTML equivalents
+  let cleaned = text
+    .replace(/\\textbf\{([^}]+)\}/g, "<strong>$1</strong>") // Bold
+    .replace(/\\texttt\{([^}]+)\}/g, "<em>$1</em>") // Italic
+    .replace(/\\emph\{([^}]+)\}/g, "<em>$1</em>") // Emphasis
+    .replace(/\\underline\{([^}]+)\}/g, "<u>$1</u>") // Underline
+    .replace(/\\cite\{([^}]+)\}/g, "[Citation: $1]") // Citations
+    .replace(/\\ref\{([^}]+)\}/g, "[Ref: $1]") // References
+    .replace(/\\url\{([^}]+)\}/g, "<a href='$1'>$1</a>") // URLs
+    .replace(/\\href\{([^}]+)\}\{([^}]+)\}/g, "<a href='$1'>$2</a>") // Hyperlinks
+    .replace(/\\footnote\{([^}]+)\}/g, "") // Remove footnotes for now
+    .replace(/\\\\/, "<br>") // Line breaks
+    .replace(/~/g, " ") // Non-breaking spaces
+    .replace(/\\%/g, "%") // Percent sign
+    .replace(/\\&/g, "&") // Ampersand
+    .replace(/\\_/g, "_") // Underscore
+    .replace(/\\#/g, "#") // Hash
+    .replace(/\\{/g, "{") // Opening brace
+    .replace(/\\}/g, "}") // Closing brace
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>") // Markdown bold
+
+  // Remove any remaining LaTeX commands
+  cleaned = cleaned.replace(/\\[a-zA-Z]+(\{[^}]*\})?/g, "")
+
+  return cleaned.trim()
 }
+
