@@ -156,16 +156,10 @@ Here:
 To discover richer structures, surviving patterns are greedily expanded by conjunction:
 
 \begin{verbatim}
-(= (get-candidate (S k) link-type minsup)
-   (let* ((smaller (get-candidate k link-type minsup))
-          (base    (get-candidate 0 link-type minsup))
-          (comb    (combine-with
-                     (get-pattern smaller)
-                     (get-pattern base))))
-     (support (flatten comb) minsup)))
+!(do-conjunct $db $cndb $conjunct $ms Z)
 \end{verbatim}
 
-\texttt{combine-with} (in \texttt{utils/MinerUtils.metta}) pairs patterns that share variables to form multi-clause \verb|(and ...)| expressions.  Iterating with increasing depth yields N-clause patterns.
+\texttt{expand_conjunction} (in \texttt{experiments/rules/conjunction-expansion.metta}) pairs patterns by creating common variables between them to form multi-clause \verb|(and ...)| expressions.  Iterating with increasing depth yields N-clause patterns.
 
 \subsection{Surprisingness (Interestingness)}
 
